@@ -1,21 +1,8 @@
 from telebot import TeleBot, types # импортировав types - импортируем типы данных из API
 from config import TOKEN
+from list_of_random_messages import list_of_messages
+from help_message import help_message
 import random
-
-
-help_message = """ Вот список доступных команд:
-
-/start - Начало работы с ботом
-/help - Список всех команд и информация
-/random - Одна случайная фраза
-"""
-# команды надо прописывать в бот через BotFather через команду /setcommands
-
-list_of_messages = [
-    'Рандомный текст №1',
-    'Рандомный текст №2',
-    'Рандомный текст №3'
-]
 
 bot = TeleBot(TOKEN)
 
