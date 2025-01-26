@@ -15,7 +15,8 @@ import config
 import list_of_random_messages
 import help_message
 import project_filters
-
+import text_formatting
+from config import group_id
 
 bot = TeleBot(config.TOKEN) # создаем бота как объект класса Telebot и передаем токен как аргумент
 bot.add_custom_filter(custom_filters.IsReplyFilter()) # подключаем кастомный фильтр с проверкой является ли сообщение ответом
@@ -26,13 +27,10 @@ bot.add_custom_filter(project_filters.ContainsWordFilter())
 
 @bot.message_handler(commands=['start'])
 def handle_command_start(message: types.Message):
-    user_text = message.text
-    bot_answer = 'Привет!'
-    print(f'Пользователь: {user_text}')
-    print(f'Ответ: {bot_answer}')
     bot.send_message(
         chat_id=message.chat.id,
-        text=bot_answer
+        text='<b>Привет!</b>', # используем инструмент форматирования текста из import formatting
+        parse_mode='HTML', # обозначаем, что текст форматированный, параметр parse_mode обязательный в случае форматирования
     )
     # Отправка фото через чтение из файла
     start_photo = types.InputFile('photo/some_photo.jpeg')  # аргументом передается путь к файлу
@@ -60,6 +58,10 @@ def handle_complete(message: types.Message):
     bot.send_message(
         chat_id=config.group_id,
         text='Задание выполнено!'
+    )
+    bot.send_photo(
+        chat_id=config.group_id,
+        photo=message.photo[-1].file_id
     )
 
 # Чтобы получить ID фото - нужно bot.send_photo() поместить в переменную (some_w), а потом получит у переменной последний размер
@@ -89,27 +91,29 @@ def echo_photo_handle(message: types.Message):
             reply_to_message_id=message.id
         )
 
+# Обработчик, который пересылает копии сообщения от пользователя в группу
+# @bot.message_handler()
+# def copy_incoming_message(message: types.Message):
+#     bot.copy_message(
+#         chat_id=config.group_id,  # куда отправляем копию сообщения
+#         from_chat_id=message.chat.id,  # откуда получаем сообщение
+#         message_id=message.id
+#     )
+
 
 @bot.message_handler(commands=['help'])
 def handle_command_help(message: types.Message):
-    user_text = message.text
-    bot_answer = help_message
-    print(f'Пользователь: {user_text}')
-    print(f'Ответ: {bot_answer}')
     bot.send_message(
         chat_id=message.chat.id,
-        text=help_message.help_message
+        text=help_message.help_message,
+        parse_mode='HTML'
     )
 
 @bot.message_handler(commands=['random'])
 def handle_command_random(message: types.Message):
-    user_text = message.text
-    bot_answer = random.choice(list_of_random_messages.list_of_messages)
-    print(f'Пользователь: {user_text}')
-    print(f'Ответ: {bot_answer}')
     bot.send_message(
         chat_id=message.chat.id,
-        text=bot_answer
+        text=random.choice(list_of_random_messages.list_of_messages)
     )
 
 # Отправляет документ по команде
@@ -153,11 +157,18 @@ def handle_reply_message(message: types.Message):
         message_type = content_types_to_ru[message_type]
     bot.send_message(
         chat_id=message.chat.id,
-        text=f'Вы ответили на это сообщение, тип контента: {message_type}',
-        reply_to_message_id=message.reply_to_message.id
+        text=f'Вы ответили на это сообщение, <b>тип контента</b>: {message_type}',   # используем простейший способ форматирования текста
+        reply_to_message_id=message.reply_to_message.id,
+        parse_mode='HTML'  # обозначаем, что текст форматированный, параметр parse_mode обязательный в случае форматирования
     )
 
-
+@bot.message_handler(commands=['formatting'])
+def hendle_formatting_message(message: types.Message):
+    bot.send_message(
+        chat_id=message.chat.id,
+        text=text_formatting.text_f,
+        parse_mode='HTML'
+    )
 
 # Отправка сообщения в ответ на сообщение пользователя, если команда не заложена в боте
 # Этот обраотчик стоит ставить самым последним обработчиком, иначе алгоритм может остановиться на нем и не дойти до нужного обработчика
