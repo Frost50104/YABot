@@ -1,19 +1,28 @@
+# Импортируем встроенные в Python библиотеки
 import random
 from io import StringIO
 # io - это встроенная библиотека Python, i = input o =output
 # StringIO - класс для работы со строками в памяти, как с файлами.
 # Он позволяет записывать текстовые данные в “виртуальный файл” (хранящийся в оперативной памяти) и считывать их оттуда.
 
+# Импортируем нужные модули из pyTelegramBotAPI
 from telebot import TeleBot
 from telebot import types # импортировав types - импортируем типы данных из API
+from telebot import custom_filters # импортируем кастомные фильтры
 
+# Импортируем собственные модули
 import config
 import list_of_random_messages
 import help_message
+import project_filters
 
 
-
-bot = TeleBot(config.TOKEN)
+bot = TeleBot(config.TOKEN) # создаем бота как объект класса Telebot и передаем токен как аргумент
+bot.add_custom_filter(custom_filters.IsReplyFilter()) # подключаем кастомный фильтр с проверкой является ли сообщение ответом
+bot.add_custom_filter(project_filters.IsUserAdminOfBot()) # подключаем кастомный фильтр из файла project_filters,
+# далее в обработчики нужно будет передавать ключ (key) из соответствующего кастомного фильтра в файле project_filters
+# в формате key=True или key=False, конкретно в этом примере is_bot_admin=True или is_bot_admin=False
+bot.add_custom_filter(project_filters.ContainsWordFilter())
 
 @bot.message_handler(commands=['start'])
 def handle_command_start(message: types.Message):
@@ -33,9 +42,28 @@ def handle_command_start(message: types.Message):
         photo=config.some_photo_id,  # отправка фото, которое уже есть на сервере телеграм,
         caption='Смотрите какое фото!'
     )
+
+# Фильтрация через функцию и обработчик работающий с текстом
+def is_complete(message: types.Message):
+    return message.text and 'готово' in message.text.lower()
+
+@bot.message_handler(func=is_complete)
+def handle_complete(message: types.Message):
+    bot.send_message(
+        chat_id=config.group_id,
+        text='Задание выполнено!'
+    )
+
+# Фильтрация через кастомный фильтр в модуле project_filters.py и обработчик, работающий с фото
+@bot.message_handler(content_types=['photo'],contains_word='готово')
+def handle_complete(message: types.Message):
+    bot.send_message(
+        chat_id=config.group_id,
+        text='Задание выполнено!'
+    )
+
 # Чтобы получить ID фото - нужно bot.send_photo() поместить в переменную (some_w), а потом получит у переменной последний размер
 #  some_w.photo[-1], потом копируем ID и используем его
-
 @bot.message_handler(content_types=['photo'])
 def echo_photo_handle(message: types.Message):
     text = message.caption
@@ -93,16 +121,42 @@ def handle_command_docs(message: types.Message):
         document=bp_doc
     )
 
-# Фильтрация через функцию
-def is_complete(message: types.Message):
-    return message.text and 'готово' in message.text.lower()
-
-@bot.message_handler(func=is_complete)
-def handle_complete(message: types.Message):
+# Обработчик, который позволяет админу группы получить id группы
+@bot.message_handler(commands=['chat_id'], is_bot_admin=True) # is_bot_admin идет из модуля project_filters.py
+def handle_chat_id_admin_request(message: types.Message):
     bot.send_message(
-        chat_id=config.group_id,
-        text='Задание выполнено!'
+        chat_id=message.chat.id,
+        text=f'ID чата: {message.chat.id}'
     )
+
+# Обработчик, который выдает ошибку, если обычный пользователь пытается использовать команду только для админов
+@bot.message_handler(commands=['chat_id'], is_bot_admin=False)
+def handle_chat_id_user_request(message: types.Message):
+    bot.send_message(
+        chat_id=message.chat.id,
+        text=f'У @{message.from_user.username} нет доступа к команде chat_id'
+    )
+
+
+content_types_to_ru = {
+    'text': 'текст',
+    'photo': 'фото',
+    'sticker': 'стикер',
+    'document': 'документ'
+}
+
+# Обработчик для ответа на сообщение на которое ответил пользователь
+@bot.message_handler(is_reply=True)
+def handle_reply_message(message: types.Message):
+    message_type = message.reply_to_message.content_type
+    if message_type in content_types_to_ru:
+        message_type = content_types_to_ru[message_type]
+    bot.send_message(
+        chat_id=message.chat.id,
+        text=f'Вы ответили на это сообщение, тип контента: {message_type}',
+        reply_to_message_id=message.reply_to_message.id
+    )
+
 
 
 # Отправка сообщения в ответ на сообщение пользователя, если команда не заложена в боте
