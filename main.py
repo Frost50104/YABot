@@ -1,9 +1,5 @@
 # Импортируем встроенные в Python библиотеки
 import random
-from io import StringIO
-# io - это встроенная библиотека Python, i = input o =output
-# StringIO - класс для работы со строками в памяти, как с файлами.
-# Он позволяет записывать текстовые данные в “виртуальный файл” (хранящийся в оперативной памяти) и считывать их оттуда.
 
 # Импортируем нужные модули из pyTelegramBotAPI
 from telebot import TeleBot
@@ -18,7 +14,7 @@ import project_filters
 import text_formatting
 from config import group_id
 
-bot = TeleBot(config.TOKEN) # создаем бота как объект класса Telebot и передаем токен как аргумент
+bot = TeleBot(config.TOKEN_TEST_BOT) # создаем бота как объект класса Telebot и передаем токен как аргумент
 bot.add_custom_filter(custom_filters.IsReplyFilter()) # подключаем кастомный фильтр с проверкой является ли сообщение ответом
 bot.add_custom_filter(project_filters.IsUserAdminOfBot()) # подключаем кастомный фильтр из файла project_filters,
 # далее в обработчики нужно будет передавать ключ (key) из соответствующего кастомного фильтра в файле project_filters
