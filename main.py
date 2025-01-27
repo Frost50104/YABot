@@ -1,10 +1,12 @@
 # Импортируем встроенные в Python библиотеки
 import random
+from io import StringIO # StringIO используется для работы с текстовыми данными в памяти как с файлами. Если нужно работать с бинарными данными, используйте BytesIO из того же модуля.
 
 # Импортируем нужные модули из pyTelegramBotAPI
 from telebot import TeleBot
 from telebot import types # импортировав types - импортируем типы данных из API
 from telebot import custom_filters # импортируем кастомные фильтры
+from telebot.types import InputFile
 
 # Импортируем собственные модули
 import config
@@ -33,7 +35,7 @@ def handle_command_start(message: types.Message):
     bot.send_photo( # Отправляем фото из директории
         chat_id=message.chat.id,
         #photo=start_photo, # отправка самого файла с подгрузкой в телеграм, что не эффективно
-        photo=config.some_photo_id,  # отправка фото, которое уже есть на сервере телеграм,
+        photo=config.uppetit_logo,  # отправка фото, которое уже есть на сервере телеграм,
         caption='Смотрите какое фото!'
     )
 
@@ -59,6 +61,17 @@ def handle_complete(message: types.Message):
         chat_id=config.group_id,
         photo=message.photo[-1].file_id
     )
+
+# Отправляет id фото если получает фото с подписью id
+@bot.message_handler(content_types=['photo'], contains_word='id')
+def handle_photo_id(message: types.Message):
+    photo_id = bot.send_message(
+        chat_id=message.chat.id,
+        text=f'ID фотографии: <pre>{message.photo[-1].file_id}</pre>',
+        parse_mode='HTML'
+    )
+
+
 
 # Чтобы получить ID фото - нужно bot.send_photo() поместить в переменную (some_w), а потом получит у переменной последний размер
 #  some_w.photo[-1], потом копируем ID и используем его
@@ -105,6 +118,35 @@ def handle_command_help(message: types.Message):
         parse_mode='HTML'
     )
 
+# По команде формирует в опперативной памяти документ с информацией о пользователе и отправляет пользователю
+@bot.message_handler(commands=['me'])
+def handle_user_info(message: types.Message):
+    file = StringIO()  # создаем объект класса StringIO(), т.е. файл
+    file.write('User info:\n')
+    file.write('User id: ')
+    file.write(str(message.from_user.id))
+    file.write('\n')
+    file.write('First name: ')
+    file.write(str(message.from_user.first_name))
+    file.write('\n')
+    file.write('Last name: ')
+    file.write(str(message.from_user.last_name))
+    file.write('\n')
+    file.write('Username: ')
+    file.write(str(message.from_user.username))
+    file.write('\n')
+    file.seek(0) # после записи инфо в файл обязательно возвращаем курсор в начало файла, иначе выдаст ошибку, что файл пустой
+    file_text_doc = types.InputFile(file)  # читаем файл и помещаем в переменную
+    bot.send_document(   # отправляем файл
+        chat_id=message.chat.id,
+        document=file_text_doc,
+        visible_file_name='Ваши данные',
+        caption='Вот ваши данные'
+    )
+
+
+
+
 @bot.message_handler(commands=['random'])
 def handle_command_random(message: types.Message):
     bot.send_message(
@@ -126,7 +168,9 @@ def handle_command_docs(message: types.Message):
 def handle_chat_id_admin_request(message: types.Message):
     bot.send_message(
         chat_id=message.chat.id,
-        text=f'ID чата: {message.chat.id}'
+        text=f'ID пользователя: <pre>{message.from_user.id}</pre>\n\nID чата: <pre>{message.chat.id}</pre>',
+        parse_mode='HTML',
+        reply_to_message_id=message.id
     )
 
 # Обработчик, который выдает ошибку, если обычный пользователь пытается использовать команду только для админов
